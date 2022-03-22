@@ -1,0 +1,9 @@
+# Development
+fastapi
+pydantic
+peewee
+
+# Testing
+pytest
+pytest-async
+factory-boy
