@@ -1,7 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import UUID4
 
-from app.schemas.requests import CreateServiceRequest, UpdateServiceRequest, DeleteServiceRequest
+from app.models.services import ServiceModel
+from app.schemas.services import Service, ServiceStatus
+from app.schemas.requests import CreateServiceRequest, UpdateServiceRequest
 from app.schemas.responses import ServiceResponse, ServiceListResponse
 
 router = APIRouter(prefix='/api/services')
@@ -9,24 +11,50 @@ router = APIRouter(prefix='/api/services')
 
 @router.post('/', response_model=ServiceResponse)
 def create_service(request: CreateServiceRequest):
-    pass
+    service = Service(
+        type=request.type,
+        resource_limit=request.resource_limit,
+    )
+    ServiceModel.synchronize_schema(service)
+    return ServiceResponse(status='OK', data=service)
 
 
 @router.get('/{service_id}/')
 def retrieve_service(service_id: UUID4):
-    pass
+    try:
+        node = ServiceModel.retrieve_schema(str(service_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return ServiceResponse(status='OK', data=node)
 
 
-@router.patch('/', response_model=ServiceResponse)
-def update_service(request: UpdateServiceRequest):
-    pass
+@router.patch('/{service_id}/', response_model=ServiceResponse)
+def update_service(service_id: UUID4, request: UpdateServiceRequest):
+    try:
+        service = ServiceModel.retrieve_schema(str(service_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    service.resource_limit = request.resource_limit
+
+    ServiceModel.synchronize_schema(service)
+    return ServiceResponse(status='OK', data=service)
 
 
-@router.delete('/', response_model=ServiceResponse)
-def delete_service(request: DeleteServiceRequest):
-    pass
+@router.delete('/{service_id}/', response_model=ServiceResponse)
+def delete_service(service_id: UUID4):
+    try:
+        service = ServiceModel.retrieve_schema(str(service_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    service.status = ServiceStatus.DELETED
+    service.resource_limit = None
+
+    ServiceModel.synchronize_schema(service)
+    return ServiceResponse(status='OK', data=service)
 
 
 @router.get('/', response_model=ServiceListResponse)
 def list_services():
-    pass
+    return ServiceListResponse(status='OK', data=ServiceModel.retrieve_schemas())

@@ -1,9 +1,13 @@
 # Development
 fastapi
-pydantic
+funcy
 peewee
+pydantic
+requests
+uvicorn
 
 # Testing
-pytest
-pytest-async
 factory-boy
+faker
+pytest
+pytest-mock

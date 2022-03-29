@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, UUID4, validator
 
@@ -10,19 +10,14 @@ class CreateNodeRequest(BaseModel):
     node_resources: ResourceData
 
     @validator('node_resources')
-    def validate_node_resources(cls, value):
+    def validate_node_resources(cls, value: ResourceData) -> ResourceData:
         if not value.is_complete():
             raise ValueError('Resource data should be complete when creating a node')
         return value
 
 
 class UpdateNodeRequest(BaseModel):
-    id: UUID4 = ...
     node_resources: Optional[ResourceData]
-
-
-class DeleteNodeRequest(BaseModel):
-    id: UUID4 = ...
 
 
 class CreateServiceRequest(BaseModel):
@@ -31,11 +26,4 @@ class CreateServiceRequest(BaseModel):
 
 
 class UpdateServiceRequest(BaseModel):
-    id: UUID4 = ...
     resource_limit: Optional[ResourceData]
-
-
-class DeleteServiceRequest(BaseModel):
-    id: UUID4 = ...
-
-

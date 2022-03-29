@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 
 from .nodes import Node
-from .services import Service
+from .services import Service, ServiceInstance
 
 
 class BaseResponse(BaseModel):
-    status: str = 'OK'
+    status: str = ...
 
 
 class EventResponse(BaseResponse):
@@ -26,3 +26,9 @@ class ServiceResponse(BaseResponse):
 
 class ServiceListResponse(BaseResponse):
     data: list[Service] = ...
+
+
+class ClusterStateResponse(BaseResponse):
+    services: list[Service] = ...
+    service_instances: list[ServiceInstance] = ...
+    nodes: list[Node] = ...

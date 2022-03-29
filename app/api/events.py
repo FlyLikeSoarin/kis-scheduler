@@ -1,16 +1,43 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
+from app.models import NodeModel, ServiceInstanceModel
 from app.schemas.events import NodeEvent, ServiceInstanceEvent
+from app.schemas.nodes import NodeStatus
 from app.schemas.responses import EventResponse
+from app.schemas.services import ServiceInstanceStatus
 
 router = APIRouter(prefix='/api/events')
 
 
-@router.post('/node/', response_model=EventResponse)
+@router.post('/nodes/', response_model=EventResponse)
 def on_node_event(event: NodeEvent):
-    pass
+    try:
+        node = NodeModel.retrieve_schema(str(event.node_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    if node.status == NodeStatus.DELETED:
+        raise HTTPException(status_code=403, detail='Event for deleted nodes are not allowed')
+
+    if event.updated_status is not None:
+        node.status = event.updated_status
+
+    NodeModel.synchronize_schema(node)
+    return EventResponse(status='OK')
 
 
-@router.post('/service-instance/', response_model=EventResponse)
+@router.post('/service-instances/', response_model=EventResponse)
 def on_service_instance_event(event: ServiceInstanceEvent):
-    pass
+    try:
+        service_instance = ServiceInstanceModel.retrieve_schema(str(event.instance_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    if service_instance.status == ServiceInstanceStatus.DELETED:
+        raise HTTPException(status_code=403, detail='Event for deleted service_instances are not allowed')
+
+    if event.updated_status is not None:
+        service_instance.status = event.updated_status
+
+    ServiceInstanceModel.synchronize_schema(service_instance)
+    return EventResponse(status='OK')

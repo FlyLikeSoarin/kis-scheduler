@@ -1,7 +1,7 @@
-from peewee import IntegerField, FloatField
+from peewee import IntegerField, FloatField, Model
 
 
-class WithResourceDataMixin:
-    cpu_cores = IntegerField(null=True)
-    ram = FloatField(null=True)
-    disk = FloatField(null=True)
+class WithResourceDataMixin(Model):
+    cpu_cores = FloatField(null=True)
+    ram = IntegerField(null=True)
+    disk = IntegerField(null=True)

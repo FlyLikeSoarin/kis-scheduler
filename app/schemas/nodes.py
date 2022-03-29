@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, UUID4, validator
 
@@ -17,18 +17,19 @@ class NodeStatus(str, ChoicesEnum):
 
 
 class Node(BaseModel):
-    id: UUID4 = ...
-    node_id: Optional[UUID4] = None
+    id: UUID4 = None
     status: NodeStatus = NodeStatus.UNKNOWN
     node_resources: Optional[ResourceData] = None
     available_resources: Optional[ResourceData] = None
     instances: Optional[ListOfInstancesOrIds] = None
 
-    @validator('allocated_resources')
-    def validate_allocated_resources(cls, value, values):
+    @validator('node_resources')
+    def validate_node_resources(cls, value: Optional[ResourceData], values: dict[str, Any]) -> Optional[ResourceData]:
         """Not deleted nodes must have a complete node_resources"""
-        if values['status'] in (NodeStatus.OPERATIONAL, NodeStatus.UNKNOWN) and value.is_complete():
+        if values['status'] in (NodeStatus.OPERATIONAL, NodeStatus.UNKNOWN) and value and value.is_complete():
             return value
         elif values['status'] == NodeStatus.DELETED:
             return None
-        raise ValueError('Allocated resources must be None or complete')
+        raise ValueError(
+            'Resources of not deleted node must be complete' if value else 'Resources of deleted node must be None'
+        )
