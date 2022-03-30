@@ -13,9 +13,9 @@ class NodeEvent(BaseModel):
 
     @validator('updated_status')
     def validate_updated_status(cls, value):
-        if value in (NodeStatus.UNKNOWN, NodeStatus.OPERATIONAL):
+        if value in (NodeStatus.FAILED, NodeStatus.ACTIVE):
             return value
-        raise ValueError('Forbidden updated_status. Allowed values: UNKNOWN, OPERATIONAL')
+        raise ValueError('Forbidden updated_status. Allowed values: FAILED, OPERATIONAL')
 
 
 class ServiceInstanceEvent(BaseModel):
@@ -27,7 +27,9 @@ class ServiceInstanceEvent(BaseModel):
         if value in (
             ServiceInstanceStatus.CRASH_LOOP,
             ServiceInstanceStatus.RUNNING,
-            ServiceInstanceStatus.REACHED_RESOURCE_LIMIT,
+            ServiceInstanceStatus.EXCEEDED_CPU,
+            ServiceInstanceStatus.EXCEEDED_RAM,
+            ServiceInstanceStatus.EXCEEDED_DISK,
         ):
             return value
-        raise ValueError('Forbidden updated_status. Allowed values: CRASH_LOOP, RUNNING, REACHED_RESOURCE_LIMIT')
+        raise ValueError('Forbidden updated_status. Allowed values: CRASH_LOOP, RUNNING, EXCEEDED_*')

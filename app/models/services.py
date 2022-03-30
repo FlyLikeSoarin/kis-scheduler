@@ -2,7 +2,7 @@ from typing import Iterable, Optional
 from uuid import uuid4
 
 from funcy import first, lmap
-from peewee import CharField, IntegerField, FloatField, ForeignKeyField
+from peewee import BooleanField, CharField, IntegerField, FloatField, ForeignKeyField
 
 from app.database import BaseModel
 from app.schemas.helpers import ResourceData
@@ -14,7 +14,6 @@ from app.schemas.services import (
     ServiceType,
 )
 
-from .mixins import WithResourceDataMixin
 from .nodes import NodeModel
 
 
@@ -26,6 +25,8 @@ class ServiceModel(BaseModel):
     ram = IntegerField(null=True)
     disk = IntegerField(null=True)
 
+    was_updated = BooleanField(null=False, default=True)
+
     @classmethod
     def synchronize_schema(cls, service: Service) -> 'ServiceModel':
         model = (cls.create if service.id is None else cls.update)(
@@ -35,6 +36,7 @@ class ServiceModel(BaseModel):
             cpu_cores=service.resource_limit.cpu_cores if service.resource_limit else None,
             ram=service.resource_limit.ram if service.resource_limit else None,
             disk=service.resource_limit.disk if service.resource_limit else None,
+            was_updated=True,
         )
         if service.id is None:
             service.id = model.id
@@ -83,6 +85,8 @@ class ServiceInstanceModel(BaseModel):
     ram = IntegerField(null=True)
     disk = IntegerField(null=True)
 
+    was_updated = BooleanField(null=False, default=True)
+
     @classmethod
     def synchronize_schema(cls, service_instance: ServiceInstance) -> 'ServiceInstanceModel':
         model = (cls.create if service_instance.id is None else cls.update)(
@@ -93,6 +97,7 @@ class ServiceInstanceModel(BaseModel):
             disk=service_instance.allocated_resources.disk if service_instance.allocated_resources else None,
             host_node_id=service_instance.node_id,
             service_id=service_instance.service_id,
+            was_updated=True,
         )
         if service_instance.id is None:
             service_instance.id = model.id

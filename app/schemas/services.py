@@ -22,7 +22,9 @@ class ServiceInstanceStatus(str, ChoicesEnum):
     CREATED = 'created'
     RUNNING = 'running'
     CRASH_LOOP = 'crash_loop'
-    REACHED_RESOURCE_LIMIT = 'reached_resource_limit'
+    EXCEEDED_CPU = 'exceeded_cpu'
+    EXCEEDED_RAM = 'exceeded_ram'
+    EXCEEDED_DISK = 'exceeded_disk'
     EVICTED = 'evicted'
     DELETED = 'deleted'
 

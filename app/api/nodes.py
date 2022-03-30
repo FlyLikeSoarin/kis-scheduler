@@ -12,7 +12,7 @@ router = APIRouter(prefix='/api/nodes')
 @router.post('/', response_model=NodeResponse)
 def create_node(request: CreateNodeRequest):
     node = Node(
-        status=NodeStatus.UNKNOWN,
+        status=NodeStatus.ACTIVE,
         node_resources=request.node_resources,
     )
     NodeModel.synchronize_schema(node)
@@ -35,6 +35,7 @@ def update_node(node_id: UUID4, request: UpdateNodeRequest):
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
+    node.status = NodeStatus.ACTIVE
     node.node_resources = request.node_resources
 
     NodeModel.synchronize_schema(node)

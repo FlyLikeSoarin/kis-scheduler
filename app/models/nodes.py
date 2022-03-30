@@ -2,13 +2,11 @@ from typing import Iterable, Optional
 from uuid import uuid4
 
 from funcy import first, lmap
-from peewee import CharField, IntegerField, FloatField
+from peewee import BooleanField, CharField, IntegerField, FloatField
 
 from app.database import BaseModel
 from app.schemas.nodes import Node, NodeStatus
 from app.schemas.helpers import ResourceData
-
-from .mixins import WithResourceDataMixin
 
 
 class NodeModel(BaseModel):
@@ -18,6 +16,8 @@ class NodeModel(BaseModel):
     ram = IntegerField(null=True)
     disk = IntegerField(null=True)
 
+    was_updated = BooleanField(null=False, default=True)
+
     @classmethod
     def synchronize_schema(cls, node: Node) -> 'NodeModel':
         model = (cls.create if node.id is None else cls.update)(
@@ -26,6 +26,7 @@ class NodeModel(BaseModel):
             cpu_cores=node.node_resources.cpu_cores if node.node_resources else None,
             ram=node.node_resources.ram if node.node_resources else None,
             disk=node.node_resources.disk if node.node_resources else None,
+            was_updated=True,
         )
         if node.id is None:
             node.id = model.id

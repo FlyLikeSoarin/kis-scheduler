@@ -15,7 +15,7 @@ class BaseModelFactory(factory.Factory):
 
 class NodeFactory(BaseModelFactory):
     id = factory.Faker('uuid4')
-    status = NodeStatus.UNKNOWN.value
+    status = NodeStatus.ACTIVE.value
 
     cpu_cores = 1.0
     ram = ByteSize.validate('1GiB')

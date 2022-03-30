@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from funcy import lmap, omit
 
-from app.models import NodeModel, ServiceModel, ServiceInstanceModel
+from app.models import NodeModel, ServiceModel
 from app.schemas.services import ServiceInstanceStatus, ServiceStatus, ServiceType
 from app.schemas.nodes import NodeStatus
 
@@ -19,7 +19,7 @@ class TestNodeCRUDAndListAPI:
         )
         assert NodeModel.get(id=response.json()['data']['id']) is not None
         assert omit(response.json()['data'], 'id') == {
-            'status': NodeStatus.UNKNOWN.value,
+            'status': NodeStatus.ACTIVE.value,
             'node_resources': {'cpu_cores': 4.0, 'ram': 16 * (1024 ** 3), 'disk': 1024 ** 4},
             'available_resources': None,
             'instances': None,
@@ -173,7 +173,7 @@ class TestEventsAPI:
     def test_node_event_ok(self, test_client):
         node = NodeFactory.create()
         response = test_client.post(
-            '/api/events/nodes/', json={'node_id': node.id, 'updated_status': NodeStatus.OPERATIONAL.value}
+            '/api/events/nodes/', json={'node_id': node.id, 'updated_status': NodeStatus.ACTIVE.value}
         )
         assert response.status_code == 200
 

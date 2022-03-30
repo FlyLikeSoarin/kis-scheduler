@@ -12,6 +12,7 @@ router = APIRouter(prefix='/api/services')
 @router.post('/', response_model=ServiceResponse)
 def create_service(request: CreateServiceRequest):
     service = Service(
+        status=ServiceStatus.ACTIVE,
         type=request.type,
         resource_limit=request.resource_limit,
     )
@@ -35,6 +36,7 @@ def update_service(service_id: UUID4, request: UpdateServiceRequest):
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
+    service.status = ServiceStatus.ACTIVE
     service.resource_limit = request.resource_limit
 
     ServiceModel.synchronize_schema(service)

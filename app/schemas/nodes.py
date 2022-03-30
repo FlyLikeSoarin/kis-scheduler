@@ -11,14 +11,15 @@ ListOfInstancesOrIds = Union[list[ServiceInstance, UUID4]]
 
 
 class NodeStatus(str, ChoicesEnum):
-    OPERATIONAL = 'operational'
-    UNKNOWN = 'unknown'
+    ACTIVE = 'active'
+    FAILED = 'failed'
     DELETED = 'deleted'
 
 
 class Node(BaseModel):
     id: UUID4 = None
-    status: NodeStatus = NodeStatus.UNKNOWN
+    status: NodeStatus = NodeStatus.ACTIVE
+
     node_resources: Optional[ResourceData] = None
     available_resources: Optional[ResourceData] = None
     instances: Optional[ListOfInstancesOrIds] = None
@@ -26,7 +27,7 @@ class Node(BaseModel):
     @validator('node_resources')
     def validate_node_resources(cls, value: Optional[ResourceData], values: dict[str, Any]) -> Optional[ResourceData]:
         """Not deleted nodes must have a complete node_resources"""
-        if values['status'] in (NodeStatus.OPERATIONAL, NodeStatus.UNKNOWN) and value and value.is_complete():
+        if values['status'] in (NodeStatus.ACTIVE, NodeStatus.ACTIVE) and value and value.is_complete():
             return value
         elif values['status'] == NodeStatus.DELETED:
             return None
