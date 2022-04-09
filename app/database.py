@@ -1,6 +1,6 @@
 from peewee import Model, SqliteDatabase, UUIDField
 
-db = SqliteDatabase('./sqlite.db')
+db = SqliteDatabase("./sqlite.db")
 db.connect()
 
 

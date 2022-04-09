@@ -1,7 +1,8 @@
 from app.database import db
 
 from .cluster import ClusterState
-from .steps import NodeUpdatesResolver, ServiceUpdatesResolver, ServiceInstanceUpdatesResolver
+from .steps import (NodeUpdatesResolver, ServiceInstanceUpdatesResolver,
+                    ServiceUpdatesResolver)
 
 
 class Scheduler:

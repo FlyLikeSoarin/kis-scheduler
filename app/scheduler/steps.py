@@ -4,9 +4,11 @@ from funcy import lfilter, lpluck_attr, pluck_attr
 from pydantic import UUID4
 
 from app.models import ServiceInstanceModel
-from app.schemas.helpers import ResourceData, increase_resource_step_kwargs, resource_types, base_allocated_resources
+from app.schemas.helpers import (ResourceData, base_allocated_resources,
+                                 increase_resource_step_kwargs, resource_types)
 from app.schemas.nodes import Node, NodeStatus
-from app.schemas.services import Service, ServiceInstance, ServiceInstanceStatus, ServiceStatus
+from app.schemas.services import (Service, ServiceInstance,
+                                  ServiceInstanceStatus, ServiceStatus)
 from app.utils.exceptions import EvictionError, SchedulingError
 
 from .cluster import ClusterState
@@ -15,19 +17,19 @@ from .cluster import ClusterState
 class NodeUpdatesResolver:
     @staticmethod
     def run(state: ClusterState) -> ClusterState:
-        updated_nodes_ids: set[UUID4] = set(pluck_attr('id', filter(lambda obj: obj._was_updated, state.nodes)))
+        updated_nodes_ids: set[UUID4] = set(pluck_attr("id", filter(lambda obj: obj._was_updated, state.nodes)))
 
         state, updated_nodes_ids = NodeUpdatesResolver.evict_from_non_active_nodes(state, updated_nodes_ids)
         state, updated_nodes_ids = NodeUpdatesResolver.resolve_active_nodes(state, updated_nodes_ids)
 
         if len(updated_nodes_ids) != 0:
-            raise SchedulingError('Not all updated nodes resolved')
+            raise SchedulingError("Not all updated nodes resolved")
 
         return state
 
     @staticmethod
     def evict_from_non_active_nodes(
-            state: ClusterState, updated_nodes_ids: set[UUID4]
+        state: ClusterState, updated_nodes_ids: set[UUID4]
     ) -> tuple[ClusterState, set[UUID4]]:
         for node_id in list(updated_nodes_ids):
             node: Node = state.ids_to_nodes_mapping[node_id]
@@ -46,9 +48,7 @@ class NodeUpdatesResolver:
         return state, updated_nodes_ids
 
     @staticmethod
-    def resolve_active_nodes(
-            state: ClusterState, updated_nodes_ids: set[UUID4]
-    ) -> tuple[ClusterState, set[UUID4]]:
+    def resolve_active_nodes(state: ClusterState, updated_nodes_ids: set[UUID4]) -> tuple[ClusterState, set[UUID4]]:
         for node_id in list(updated_nodes_ids):
             node: Node = state.ids_to_nodes_mapping[node_id]
 
@@ -64,7 +64,7 @@ class NodeUpdatesResolver:
 class ServiceUpdatesResolver:
     @staticmethod
     def run(state: ClusterState) -> ClusterState:
-        updated_services_ids: set[UUID4] = set(pluck_attr('id', filter(lambda obj: obj._was_updated, state.services)))
+        updated_services_ids: set[UUID4] = set(pluck_attr("id", filter(lambda obj: obj._was_updated, state.services)))
 
         state, updated_services_ids = ServiceUpdatesResolver.delete_instances_of_deleted_services(
             state, updated_services_ids
@@ -74,13 +74,13 @@ class ServiceUpdatesResolver:
         )
 
         if len(updated_services_ids) != 0:
-            raise SchedulingError('Not all updated services resolved')
+            raise SchedulingError("Not all updated services resolved")
 
         return state
 
     @staticmethod
     def delete_instances_of_deleted_services(
-            state: ClusterState, updated_services_ids: set[UUID4]
+        state: ClusterState, updated_services_ids: set[UUID4]
     ) -> tuple[ClusterState, set[UUID4]]:
         for service_id in list(updated_services_ids):
             service: Service = state.ids_to_services_mapping[service_id]
@@ -99,7 +99,7 @@ class ServiceUpdatesResolver:
 
     @staticmethod
     def check_instances_of_active_services(
-            state: ClusterState, updated_services_ids: set[UUID4]
+        state: ClusterState, updated_services_ids: set[UUID4]
     ) -> tuple[ClusterState, set[UUID4]]:
         for service_id in list(updated_services_ids):
             service: Service = state.ids_to_services_mapping[service_id]
@@ -128,7 +128,7 @@ class ServiceInstanceUpdatesResolver:
     @staticmethod
     def run(state: ClusterState) -> ClusterState:
         updated_service_instances_ids: set[UUID4] = set(
-            pluck_attr('id', filter(lambda obj: obj._was_updated, state.service_instances))
+            pluck_attr("id", filter(lambda obj: obj._was_updated, state.service_instances))
         )
 
         state.calculate_available_resources()
@@ -147,13 +147,15 @@ class ServiceInstanceUpdatesResolver:
 
     @staticmethod
     def resolve_allocated_service_instances(
-            state: ClusterState, updated_service_instances_ids: set[UUID4]
+        state: ClusterState, updated_service_instances_ids: set[UUID4]
     ) -> tuple[ClusterState, set[UUID4]]:
         for instance_id in list(updated_service_instances_ids):
             instance: ServiceInstance = state.ids_to_service_instances_mapping[instance_id]
 
             if instance.status not in (
-                    ServiceInstanceStatus.CREATED, ServiceInstanceStatus.RUNNING, ServiceInstanceStatus.CRASH_LOOP
+                ServiceInstanceStatus.CREATED,
+                ServiceInstanceStatus.RUNNING,
+                ServiceInstanceStatus.CRASH_LOOP,
             ):
                 continue
 
@@ -165,22 +167,22 @@ class ServiceInstanceUpdatesResolver:
 
     @staticmethod
     def resolve_exceeded_service_instances(
-            state: ClusterState, updated_service_instances_ids: set[UUID4]
+        state: ClusterState, updated_service_instances_ids: set[UUID4]
     ) -> tuple[ClusterState, set[UUID4]]:
         for instance_id in list(updated_service_instances_ids):
             instance: ServiceInstance = state.ids_to_service_instances_mapping[instance_id]
 
             if instance.status not in (
-                    ServiceInstanceStatus.EXCEEDED_CPU,
-                    ServiceInstanceStatus.EXCEEDED_RAM,
-                    ServiceInstanceStatus.EXCEEDED_DISK,
+                ServiceInstanceStatus.EXCEEDED_CPU,
+                ServiceInstanceStatus.EXCEEDED_RAM,
+                ServiceInstanceStatus.EXCEEDED_DISK,
             ):
                 continue
 
-            exceeded_resource_type = instance.status.value.split('_')[-1]
-            exceeded_resource_type = 'cpu_cores' if exceeded_resource_type == 'cpu' else exceeded_resource_type
+            exceeded_resource_type = instance.status.value.split("_")[-1]
+            exceeded_resource_type = "cpu_cores" if exceeded_resource_type == "cpu" else exceeded_resource_type
             if exceeded_resource_type not in resource_types:
-                raise SchedulingError('Unknown resource type exceeded')
+                raise SchedulingError("Unknown resource type exceeded")
 
             service: Service = state.ids_to_services_mapping[instance.service_id]
             new_allocated_resources = ServiceInstanceUpdatesResolver._calculate_additional_resources(
@@ -217,7 +219,7 @@ class ServiceInstanceUpdatesResolver:
 
     @staticmethod
     def resolve_evicted_service_instances(
-            state: ClusterState, updated_service_instances_ids: set[UUID4]
+        state: ClusterState, updated_service_instances_ids: set[UUID4]
     ) -> tuple[ClusterState, set[UUID4]]:
 
         for instance_id in list(updated_service_instances_ids):
@@ -241,7 +243,7 @@ class ServiceInstanceUpdatesResolver:
 
     @staticmethod
     def _calculate_additional_resources(
-            service: Service, instance: ServiceInstance, exceeded_resource_type: str
+        service: Service, instance: ServiceInstance, exceeded_resource_type: str
     ) -> ResourceData:
         resource_limit = getattr(service.resource_limit, exceeded_resource_type)
         resource_allocated = getattr(instance.allocated_resources, exceeded_resource_type)
@@ -249,17 +251,14 @@ class ServiceInstanceUpdatesResolver:
         if resource_limit == resource_allocated:
             return instance.allocated_resources
         resource_increased = min(
-            resource_limit,
-            resource_allocated + increase_resource_step_kwargs[exceeded_resource_type]
+            resource_limit, resource_allocated + increase_resource_step_kwargs[exceeded_resource_type]
         )
 
-        return ResourceData(
-            **(instance.allocated_resources.dict() | {exceeded_resource_type: resource_increased})
-        )
+        return ResourceData(**(instance.allocated_resources.dict() | {exceeded_resource_type: resource_increased}))
 
     @staticmethod
     def place_instance_somewhere(
-            state: ClusterState, instance: ServiceInstance, required_resources: ResourceData, service: Service
+        state: ClusterState, instance: ServiceInstance, required_resources: ResourceData, service: Service
     ) -> bool:
         for node in state.active_nodes():  # Try to place instance without evictions
             try:

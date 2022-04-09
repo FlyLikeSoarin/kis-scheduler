@@ -1,5 +1,5 @@
-from typing import Iterable, Optional
 from copy import deepcopy
+from typing import Iterable, Optional
 
 from funcy import lfilter, lpluck_attr, project
 from pydantic import UUID4
@@ -7,9 +7,9 @@ from pydantic import UUID4
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.schemas.helpers import ResourceData, resource_types
 from app.schemas.nodes import Node, NodeStatus
-from app.schemas.services import Service, ServiceInstance, ServiceInstanceStatus
-
-from app.utils.exceptions import SchedulingError, EvictionError
+from app.schemas.services import (Service, ServiceInstance,
+                                  ServiceInstanceStatus)
+from app.utils.exceptions import EvictionError, SchedulingError
 
 
 class ClusterState:
@@ -96,16 +96,16 @@ class ClusterState:
             instances = self.get_service_instances_by_ids(node.instance_ids)
             occupied_resources = ResourceData()
 
-            for occupied_by_instance_resources in lpluck_attr('allocated_resources', instances):
+            for occupied_by_instance_resources in lpluck_attr("allocated_resources", instances):
                 occupied_resources += occupied_by_instance_resources
 
             try:
                 node.available_resources = node.node_resources - occupied_resources
             except ValueError:
-                raise SchedulingError('available_resource cannot be negative')
+                raise SchedulingError("available_resource cannot be negative")
 
     def attempt_to_acquire_resources(
-            self, node: Node, required_resources: ResourceData, for_service: Service
+        self, node: Node, required_resources: ResourceData, for_service: Service
     ) -> list[UUID4]:
         """
         Attempt to acquire requested resources from node.
@@ -133,13 +133,13 @@ class ClusterState:
         for counter, instance in enumerate(evictable_instances):
             sum_ += instance.allocated_resources
             if sum_.fits(required_resources):
-                return lpluck_attr('id', evictable_instances[:counter + 1])
+                return lpluck_attr("id", evictable_instances[: counter + 1])
 
         raise EvictionError()
 
     def evict_instance(self, instance: ServiceInstance, node: Optional[Node] = None):
         """Evicts instance from node. Adjusts available resources."""
-        print('evict', instance)
+        print("evict", instance)
         if not node:
             node = self.ids_to_nodes_mapping[instance.id]
         if node.available_resources is not None:

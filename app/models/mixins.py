@@ -1,4 +1,4 @@
-from peewee import IntegerField, FloatField, Model
+from peewee import FloatField, IntegerField, Model
 
 
 class WithResourceDataMixin(Model):

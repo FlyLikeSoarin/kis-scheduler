@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, UUID4, validator
+from pydantic import UUID4, BaseModel, validator
 
 from app.utils.typing import ChoicesEnum
 
@@ -8,25 +8,25 @@ from .helpers import ResourceData
 
 
 class ServiceType(str, ChoicesEnum):
-    STATELESS = 'stateless'
-    FRAGILE = 'fragile'
-    STATEFUL = 'stateful'
+    STATELESS = "stateless"
+    FRAGILE = "fragile"
+    STATEFUL = "stateful"
 
 
 class ServiceStatus(str, ChoicesEnum):
-    ACTIVE = 'active'
-    DELETED = 'deleted'
+    ACTIVE = "active"
+    DELETED = "deleted"
 
 
 class ServiceInstanceStatus(str, ChoicesEnum):
-    CREATED = 'created'
-    RUNNING = 'running'
-    CRASH_LOOP = 'crash_loop'
-    EXCEEDED_CPU = 'exceeded_cpu'
-    EXCEEDED_RAM = 'exceeded_ram'
-    EXCEEDED_DISK = 'exceeded_disk'
-    EVICTED = 'evicted'
-    DELETED = 'deleted'
+    CREATED = "created"
+    RUNNING = "running"
+    CRASH_LOOP = "crash_loop"
+    EXCEEDED_CPU = "exceeded_cpu"
+    EXCEEDED_RAM = "exceeded_ram"
+    EXCEEDED_DISK = "exceeded_disk"
+    EVICTED = "evicted"
+    DELETED = "deleted"
 
 
 class ServiceInstance(BaseModel):
@@ -38,11 +38,11 @@ class ServiceInstance(BaseModel):
 
     _was_updated: Optional[bool] = None
 
-    @validator('allocated_resources')
+    @validator("allocated_resources")
     def validate_allocated_resources(cls, value: Any) -> Optional[ResourceData]:
         if value is None or value.is_complete():
             return value
-        raise ValueError('Allocated resources must be None or complete')
+        raise ValueError("Allocated resources must be None or complete")
 
     class Config:
         underscore_attrs_are_private = True
@@ -57,22 +57,20 @@ class Service(BaseModel):
 
     _was_updated: Optional[bool] = None
 
-    @validator('resource_limit')
+    @validator("resource_limit")
     def validate_resource_limit(cls, value: Any, values: dict[str, Any]) -> Optional[ResourceData]:
-        if value is None and values['status'] == ServiceStatus.DELETED:
+        if value is None and values["status"] == ServiceStatus.DELETED:
             return value
-        if value is not None and values['status'] == ServiceStatus.ACTIVE:
+        if value is not None and values["status"] == ServiceStatus.ACTIVE:
             return value
-        raise ValueError('Allocated resources must be None or complete')
+        raise ValueError("Allocated resources must be None or complete")
 
-    def has_type_priority_over(self, other: 'Service') -> bool:
+    def has_type_priority_over(self, other: "Service") -> bool:
         return other.type in {
             ServiceType.STATELESS: (),
             ServiceType.FRAGILE: (ServiceType.STATELESS,),
-            ServiceType.STATEFUL: (ServiceType.FRAGILE, ServiceType.STATELESS)
+            ServiceType.STATEFUL: (ServiceType.FRAGILE, ServiceType.STATELESS),
         }.get(self.type, ())
 
     class Config:
         underscore_attrs_are_private = True
-
-

@@ -2,7 +2,7 @@ from funcy import first
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 
-from .factories import NodeFactory, ServiceInstanceFactory, ServiceFactory
+from .factories import NodeFactory, ServiceFactory, ServiceInstanceFactory
 
 
 class TestForeignKeys:

@@ -1,14 +1,14 @@
 import pytest
-
 from funcy import first
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.scheduler import Scheduler
-from app.schemas.helpers import ResourceData, base_allocated_resources, increase_resource_step_kwargs
+from app.schemas.helpers import (ResourceData, base_allocated_resources,
+                                 increase_resource_step_kwargs)
 from app.schemas.nodes import NodeStatus
 from app.schemas.services import ServiceInstanceStatus, ServiceType
 
-from .factories import NodeFactory, ServiceInstanceFactory, ServiceFactory
+from .factories import NodeFactory, ServiceFactory, ServiceInstanceFactory
 
 
 class TestServiceCreation:
@@ -67,9 +67,7 @@ class TestServiceCreation:
         stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
             ServiceInstanceModel.service_id == stateless.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service == fragile.id
-        )
+        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
         assert stateless_instances and fragile_instances
 
         assert first(stateless_instances).node_id is None  # Preempted low-priority instance
@@ -95,9 +93,7 @@ class TestServiceCreation:
         stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
             ServiceInstanceModel.service_id == stateless.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service == fragile.id
-        )
+        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
         assert stateless_instances and fragile_instances
 
         assert first(stateless_instances).node_id is None  # Not placed low-priority instance
@@ -118,9 +114,7 @@ class TestServiceCreation:
 
         Scheduler.run_scheduling()
 
-        stateful_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service_id == stateful.id
-        )
+        stateful_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == stateful.id)
         assert stateful_instances
         assert str(first(stateful_instances).node_id) == str(node.id)  # Placed highest-priority instance
 
@@ -142,9 +136,7 @@ class TestServiceCreation:
         stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
             ServiceInstanceModel.service_id == stateless.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service == fragile.id
-        )
+        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
         assert stateless_instances and fragile_instances
 
         assert str(first(stateless_instances).node_id) == str(node.id)  # Unchanged low-priority instance
@@ -170,9 +162,7 @@ class TestServiceCreation:
         stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
             ServiceInstanceModel.service_id == stateless.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service == fragile.id
-        )
+        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
         assert stateless_instances and fragile_instances
 
         assert str(first(stateless_instances).node_id) == str(nodes[0].id)  # Unchanged low-priority instance
@@ -193,9 +183,7 @@ class TestServiceCreation:
 
         Scheduler.run_scheduling()
 
-        stateful_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service_id == stateful.id
-        )
+        stateful_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == stateful.id)
         assert stateful_instances
         assert str(first(stateful_instances).node_id) == str(node.id)  # Placed highest-priority instance
 
@@ -206,8 +194,8 @@ class TestServiceCreation:
         and host node with enough available resources,
         when allocation will be increased.
         """
-        expected_resources = (
-                base_allocated_resources + ResourceData(cpu_cores=increase_resource_step_kwargs['cpu_cores'])
+        expected_resources = base_allocated_resources + ResourceData(
+            cpu_cores=increase_resource_step_kwargs["cpu_cores"]
         )
 
         node = NodeFactory.create(was_updated=False)
@@ -252,7 +240,7 @@ class TestServiceCreation:
         assert instance.allocated_resources == expected_resources
 
     def test_if_node_exceeds_resource_more_will_not_be_allocated_if_allowed_by_limit_but_not_possible(
-            self, test_client
+        self, test_client
     ):
         """
         If there are an active service
@@ -280,7 +268,7 @@ class TestServiceCreation:
         assert instance.allocated_resources == expected_resources
 
     def test_if_node_exceeds_resource_more_will_be_allocated_if_allowed_by_limit_and_possible_by_preemption(
-            self, test_client
+        self, test_client
     ):
         """
         If there are an active service
@@ -288,8 +276,8 @@ class TestServiceCreation:
         and host node with enough available resources (after preemption),
         when allocation will be increased.
         """
-        expected_resources = (
-                base_allocated_resources + ResourceData(cpu_cores=increase_resource_step_kwargs['cpu_cores'])
+        expected_resources = base_allocated_resources + ResourceData(
+            cpu_cores=increase_resource_step_kwargs["cpu_cores"]
         )
 
         node = NodeFactory.create(was_updated=False, cpu_cores=base_allocated_resources.cpu_cores * 2)

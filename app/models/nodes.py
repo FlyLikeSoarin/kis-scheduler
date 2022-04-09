@@ -2,11 +2,11 @@ from typing import Iterable, Optional
 from uuid import uuid4
 
 from funcy import first, lmap
-from peewee import BooleanField, CharField, IntegerField, FloatField
+from peewee import BooleanField, CharField, FloatField, IntegerField
 
 from app.database import BaseModel
-from app.schemas.nodes import Node, NodeStatus
 from app.schemas.helpers import ResourceData
+from app.schemas.nodes import Node, NodeStatus
 
 
 class NodeModel(BaseModel):
@@ -21,11 +21,11 @@ class NodeModel(BaseModel):
     @classmethod
     def synchronize_schema(cls, node: Node):
         query_kwargs = {
-            'status': node.status.value,
-            'cpu_cores': node.node_resources.cpu_cores if node.node_resources else None,
-            'ram': node.node_resources.ram if node.node_resources else None,
-            'disk': node.node_resources.disk if node.node_resources else None,
-            'was_updated': True,
+            "status": node.status.value,
+            "cpu_cores": node.node_resources.cpu_cores if node.node_resources else None,
+            "ram": node.node_resources.ram if node.node_resources else None,
+            "disk": node.node_resources.disk if node.node_resources else None,
+            "was_updated": True,
         }
         if node.id is None:
             saved_model = cls.create(id=uuid4(), **query_kwargs)  # TODO: Move id generation to DB
@@ -34,7 +34,7 @@ class NodeModel(BaseModel):
             cls.update(**query_kwargs).where(cls.id == node.id).execute()
 
     @staticmethod
-    def _to_schema(model: 'NodeModel') -> Node:
+    def _to_schema(model: "NodeModel") -> Node:
         schema = Node(
             id=model.id,
             status=model.status,
@@ -51,7 +51,7 @@ class NodeModel(BaseModel):
     def retrieve_schema(cls, node_id: str) -> Node:
         node = first(cls.retrieve_schemas([node_id]))
         if node is None:
-            raise ValueError('Not found')
+            raise ValueError("Not found")
         return node
 
     @classmethod
