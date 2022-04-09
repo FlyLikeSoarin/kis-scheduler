@@ -1,5 +1,6 @@
 import pytest
 
+from functools import partial
 from uuid import uuid4
 
 from funcy import lmap, omit
@@ -22,7 +23,7 @@ class TestNodeCRUDAndListAPI:
             'status': NodeStatus.ACTIVE.value,
             'node_resources': {'cpu_cores': 4.0, 'ram': 16 * (1024 ** 3), 'disk': 1024 ** 4},
             'available_resources': None,
-            'instances': None,
+            'instance_ids': None,
         }
 
     def test_create_node_422_if_not_valid(self, test_client):
@@ -91,7 +92,7 @@ class TestServiceCRUDAndListAPI:
             'status': ServiceStatus.ACTIVE.value,
             'type': ServiceType.FRAGILE.value,
             'resource_limit': {'cpu_cores': 1.5, 'ram': 1024 ** 3, 'disk': (1024 ** 3) * 10},
-            'instance': None,
+            'instance_id': None,
         }
 
     def test_create_service_422_if_not_valid(self, test_client):
@@ -107,13 +108,9 @@ class TestServiceCRUDAndListAPI:
             f'/api/services/{service.id}/',
             json={'resource_limit': {'cpu_cores': 1.5, 'ram': '1GiB', 'disk': '10GiB'}},
         )
-        assert response.json()['data'] == {
-            'id': service.id,
-            'status': ServiceStatus.ACTIVE.value,
-            'type': ServiceType.STATELESS.value,
-            'resource_limit': {'cpu_cores': 1.5, 'ram': 1024 ** 3, 'disk': (1024 ** 3) * 10},
-            'instance': None,
-        }
+        assert response.json()['data'] == _serialize_service_model(
+            service, resource_limit={'cpu_cores': 1.5, 'ram': 1024 ** 3, 'disk': (1024 ** 3) * 10}
+        )
 
     def test_update_service_422_if_not_valid(self, test_client):
         service = ServiceFactory.create()
@@ -163,7 +160,7 @@ class TestMonitoringAPI:
 
         assert response.json() == {
             'status': 'OK',
-            'nodes': lmap(_serialize_node_model, nodes),
+            'nodes': lmap(partial(_serialize_node_model, instance_ids=[]), nodes),
             'services': lmap(_serialize_service_model, services),
             'service_instances': lmap(_serialize_service_instance_model, service_instances)
         }
@@ -215,7 +212,7 @@ def _serialize_node_model(node_model, **kwargs):
             'ram': node_model.ram,
         },
         'available_resources': None,
-        'instances': None,
+        'instance_ids': None,
     } | kwargs
 
 
@@ -229,7 +226,7 @@ def _serialize_service_model(service_model, **kwargs):
             'disk': service_model.disk,
             'ram': service_model.ram
         },
-        'instance': None,
+        'instance_id': None,
     } | kwargs
 
 
@@ -237,7 +234,11 @@ def _serialize_service_instance_model(service_instance_model, **kwargs):
     return {
         'id': str(service_instance_model.id),
         'status': service_instance_model.status,
-        'allocated_resources': None,
+        'allocated_resources': {
+            'cpu_cores': service_instance_model.cpu_cores,
+            'disk': service_instance_model.disk,
+            'ram': service_instance_model.ram
+        },
         'node_id': None,
         'service_id': None,
     } | kwargs

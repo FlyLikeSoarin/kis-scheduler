@@ -1,13 +1,10 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel, UUID4, validator
 
 from app.utils.typing import ChoicesEnum
 
 from .helpers import ResourceData
-from .services import ServiceInstance
-
-ListOfInstancesOrIds = Union[list[ServiceInstance, UUID4]]
 
 
 class NodeStatus(str, ChoicesEnum):
@@ -22,15 +19,20 @@ class Node(BaseModel):
 
     node_resources: Optional[ResourceData] = None
     available_resources: Optional[ResourceData] = None
-    instances: Optional[ListOfInstancesOrIds] = None
+    instance_ids: Optional[list[UUID4]] = None
+
+    _was_updated: Optional[bool] = None
 
     @validator('node_resources')
     def validate_node_resources(cls, value: Optional[ResourceData], values: dict[str, Any]) -> Optional[ResourceData]:
         """Not deleted nodes must have a complete node_resources"""
-        if values['status'] in (NodeStatus.ACTIVE, NodeStatus.ACTIVE) and value and value.is_complete():
+        if values['status'] in (NodeStatus.ACTIVE, NodeStatus.FAILED) and value and value.is_complete():
             return value
         elif values['status'] == NodeStatus.DELETED:
             return None
         raise ValueError(
             'Resources of not deleted node must be complete' if value else 'Resources of deleted node must be None'
         )
+
+    class Config:
+        underscore_attrs_are_private = True

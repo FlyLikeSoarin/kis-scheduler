@@ -19,22 +19,23 @@ class NodeModel(BaseModel):
     was_updated = BooleanField(null=False, default=True)
 
     @classmethod
-    def synchronize_schema(cls, node: Node) -> 'NodeModel':
-        model = (cls.create if node.id is None else cls.update)(
-            id=node.id or uuid4(),  # Move id generation to DB
-            status=node.status,
-            cpu_cores=node.node_resources.cpu_cores if node.node_resources else None,
-            ram=node.node_resources.ram if node.node_resources else None,
-            disk=node.node_resources.disk if node.node_resources else None,
-            was_updated=True,
-        )
+    def synchronize_schema(cls, node: Node):
+        query_kwargs = {
+            'status': node.status.value,
+            'cpu_cores': node.node_resources.cpu_cores if node.node_resources else None,
+            'ram': node.node_resources.ram if node.node_resources else None,
+            'disk': node.node_resources.disk if node.node_resources else None,
+            'was_updated': True,
+        }
         if node.id is None:
-            node.id = model.id
-        return model
+            saved_model = cls.create(id=uuid4(), **query_kwargs)  # TODO: Move id generation to DB
+            node.id = saved_model.id
+        else:
+            cls.update(**query_kwargs).where(cls.id == node.id).execute()
 
     @staticmethod
     def _to_schema(model: 'NodeModel') -> Node:
-        return Node(
+        schema = Node(
             id=model.id,
             status=model.status,
             node_resources=ResourceData(
@@ -43,6 +44,8 @@ class NodeModel(BaseModel):
                 disk=model.disk,
             ),
         )
+        schema._was_updated = model.was_updated
+        return schema
 
     @classmethod
     def retrieve_schema(cls, node_id: str) -> Node:
@@ -53,8 +56,14 @@ class NodeModel(BaseModel):
 
     @classmethod
     def retrieve_schemas(cls, node_ids: Optional[Iterable[str]] = None) -> list[Node]:
-        query = cls.select()
         if node_ids:
-            query = query.where(cls.id.in_(node_ids))
+            return cls.retrieve_schemas_where(cls.id.in_(node_ids))
+        return cls.retrieve_schemas_where()
+
+    @classmethod
+    def retrieve_schemas_where(cls, *where_params) -> list[Node]:
+        query = cls.select()
+        if where_params:
+            query = query.where(*where_params)
         models = list(query.execute())
         return lmap(cls._to_schema, models)

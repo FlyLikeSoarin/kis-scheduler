@@ -17,9 +17,9 @@ class NodeFactory(BaseModelFactory):
     id = factory.Faker('uuid4')
     status = NodeStatus.ACTIVE.value
 
-    cpu_cores = 1.0
-    ram = ByteSize.validate('1GiB')
-    disk = ByteSize.validate('10GiB')
+    cpu_cores = 8.0
+    ram = ByteSize.validate('32GiB')
+    disk = ByteSize.validate('1TiB')
 
     class Meta:
         model = NodeModel

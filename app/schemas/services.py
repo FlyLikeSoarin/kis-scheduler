@@ -36,11 +36,16 @@ class ServiceInstance(BaseModel):
     status: ServiceInstanceStatus = ServiceInstanceStatus.CREATED
     allocated_resources: Optional[ResourceData] = None
 
+    _was_updated: Optional[bool] = None
+
     @validator('allocated_resources')
     def validate_allocated_resources(cls, value: Any) -> Optional[ResourceData]:
         if value is None or value.is_complete():
             return value
         raise ValueError('Allocated resources must be None or complete')
+
+    class Config:
+        underscore_attrs_are_private = True
 
 
 class Service(BaseModel):
@@ -48,7 +53,9 @@ class Service(BaseModel):
     status: ServiceStatus = ServiceStatus.ACTIVE
     type: ServiceType = ...
     resource_limit: Optional[ResourceData] = ...
-    instance: Optional[ServiceInstance] = None
+    instance_id: Optional[UUID4] = None
+
+    _was_updated: Optional[bool] = None
 
     @validator('resource_limit')
     def validate_resource_limit(cls, value: Any, values: dict[str, Any]) -> Optional[ResourceData]:
@@ -57,4 +64,15 @@ class Service(BaseModel):
         if value is not None and values['status'] == ServiceStatus.ACTIVE:
             return value
         raise ValueError('Allocated resources must be None or complete')
+
+    def has_type_priority_over(self, other: 'Service') -> bool:
+        return other.type in {
+            ServiceType.STATELESS: (),
+            ServiceType.FRAGILE: (ServiceType.STATELESS,),
+            ServiceType.STATEFUL: (ServiceType.FRAGILE, ServiceType.STATELESS)
+        }.get(self.type, ())
+
+    class Config:
+        underscore_attrs_are_private = True
+
 
