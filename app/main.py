@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import (events_router, monitoring_router, nodes_router,
-                     services_router)
+from app.api import events_router, monitoring_router, nodes_router, services_router
 
 app = FastAPI()
 

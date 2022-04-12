@@ -3,8 +3,7 @@ from funcy import first
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.scheduler import Scheduler
-from app.schemas.helpers import (ResourceData, base_allocated_resources,
-                                 increase_resource_step_kwargs)
+from app.schemas.helpers import ResourceData, base_allocated_resources, increase_resource_step_kwargs
 from app.schemas.nodes import NodeStatus
 from app.schemas.services import ServiceInstanceStatus, ServiceType
 
@@ -101,7 +100,7 @@ class TestServiceCreation:
 
     def test_node_with_highest_priority_will_be_places(self, test_client):
         """
-        If there are an active service without running instances
+        If there is an active service without running instances
         and node on which instance is placed with resources for one node,
         when instance for service with the highest priority will be placed.
         """
@@ -168,28 +167,9 @@ class TestServiceCreation:
         assert str(first(stateless_instances).node_id) == str(nodes[0].id)  # Unchanged low-priority instance
         assert str(first(fragile_instances).node_id) == str(nodes[1].id)  # Placed high-priority instance
 
-    def test_node_with_highest_priority_will_be_places(self, test_client):
-        """
-        If there are an active service without running instances
-        and node on which instance is placed with resources for one node,
-        when instance for service with the highest priority will be placed.
-        """
-        node = NodeFactory.create(  # Enough resources for single instance
-            was_updated=False, **(base_allocated_resources.dict())
-        )
-        ServiceFactory.create(was_updated=True, type=ServiceType.STATELESS)
-        ServiceFactory.create(was_updated=True, type=ServiceType.FRAGILE)
-        stateful = ServiceFactory.create(was_updated=True, type=ServiceType.STATEFUL)
-
-        Scheduler.run_scheduling()
-
-        stateful_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == stateful.id)
-        assert stateful_instances
-        assert str(first(stateful_instances).node_id) == str(node.id)  # Placed highest-priority instance
-
     def test_if_node_exceeds_resource_more_will_be_allocated_if_allowed_by_limit_and_possible(self, test_client):
         """
-        If there are an active service
+        If there is an active service
         with high enough limit and running instance which exceeded cpu_cores allocation,
         and host node with enough available resources,
         when allocation will be increased.

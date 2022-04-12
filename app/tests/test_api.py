@@ -1,13 +1,15 @@
+import json
+from datetime import timedelta
 from functools import partial
 from uuid import uuid4
 
 import pytest
 from funcy import lmap, omit
 
-from app.models import NodeModel, ServiceModel
+from app.models import NodeModel, SchedulerLogModel, ServiceModel
+from app.schemas.monitoring import SchedulerLog, SchedulerMetrics
 from app.schemas.nodes import NodeStatus
-from app.schemas.services import (ServiceInstanceStatus, ServiceStatus,
-                                  ServiceType)
+from app.schemas.services import ServiceInstanceStatus, ServiceStatus, ServiceType
 
 from .factories import NodeFactory, ServiceFactory, ServiceInstanceFactory
 
@@ -167,6 +169,30 @@ class TestMonitoringAPI:
             "services": lmap(_serialize_service_model, services),
             "service_instances": lmap(_serialize_service_instance_model, service_instances),
         }
+
+    def test_retrieve_metrics(self, test_client):
+        logs = self._create_logs()
+        response = test_client.get("/api/monitoring/metrics/")
+        assert response.json()["data"] == [json.loads(log.json()) for log in logs]
+
+    def test_retrieve_metrics_starting_from_timestamp(self, test_client):
+        logs = self._create_logs()
+        response = test_client.get(f"/api/monitoring/metrics/?from={logs[2].timestamp}")
+        assert response.json()["data"] == [json.loads(log.json()) for log in logs[3:]]
+
+    def test_retrieve_metrics_by_period_duration(self, test_client):
+        logs = self._create_logs()
+        response = test_client.get(f"/api/monitoring/metrics/?duration={timedelta(minutes=1)}")
+        assert response.json()["data"] == [json.loads(log.json()) for log in logs]
+
+    @staticmethod
+    def _create_logs():
+        logs = []
+        for _ in range(5):
+            log = SchedulerLog(metrics=SchedulerMetrics())
+            SchedulerLogModel.persist_schema(log)
+            logs.append(log)
+        return logs
 
 
 class TestEventsAPI:

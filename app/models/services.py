@@ -1,20 +1,16 @@
-from typing import Iterable, Optional
 from uuid import uuid4
 
-from funcy import first, lmap
-from peewee import (BooleanField, CharField, FloatField, ForeignKeyField,
-                    IntegerField)
+from peewee import BooleanField, CharField, FloatField, ForeignKeyField, IntegerField
 
 from app.database import BaseModel
 from app.schemas.helpers import ResourceData
-from app.schemas.services import (Service, ServiceInstance,
-                                  ServiceInstanceStatus, ServiceStatus,
-                                  ServiceType)
+from app.schemas.services import Service, ServiceInstance, ServiceInstanceStatus, ServiceStatus, ServiceType
 
+from .mixins import SchemaRetrieversMixin
 from .nodes import NodeModel
 
 
-class ServiceModel(BaseModel):
+class ServiceModel(SchemaRetrieversMixin, BaseModel):
     status = CharField(max_length=20, choices=ServiceStatus.choices())
     type = CharField(max_length=20, choices=ServiceType.choices())
 
@@ -57,29 +53,8 @@ class ServiceModel(BaseModel):
         schema._was_updated = model.was_updated
         return schema
 
-    @classmethod
-    def retrieve_schema(cls, service_id: str) -> Service:
-        service = first(cls.retrieve_schemas([service_id]))
-        if service is None:
-            raise ValueError("Not found")
-        return service
 
-    @classmethod
-    def retrieve_schemas(cls, service_ids: Optional[Iterable[str]] = None) -> list[Service]:
-        if service_ids:
-            return cls.retrieve_schemas_where(cls.id.in_(service_ids))
-        return cls.retrieve_schemas_where()
-
-    @classmethod
-    def retrieve_schemas_where(cls, *where_params) -> list[Service]:
-        query = cls.select()
-        if where_params:
-            query = query.where(*where_params)
-        models = list(query.execute())
-        return lmap(cls._to_schema, models)
-
-
-class ServiceInstanceModel(BaseModel):
+class ServiceInstanceModel(SchemaRetrieversMixin, BaseModel):
     status = CharField(max_length=20, choices=ServiceInstanceStatus.choices())
     service = ForeignKeyField(ServiceModel, backref="_service_instances", unique=True, null=True, lazy_load=False)
     host_node = ForeignKeyField(NodeModel, backref="service_instances", null=True, lazy_load=False)
@@ -128,24 +103,3 @@ class ServiceInstanceModel(BaseModel):
         )
         schema._was_updated = model.was_updated
         return schema
-
-    @classmethod
-    def retrieve_schema(cls, service_instance_id: str) -> ServiceInstance:
-        service_instance = first(cls.retrieve_schemas([service_instance_id]))
-        if service_instance is None:
-            raise ValueError("Not found")
-        return service_instance
-
-    @classmethod
-    def retrieve_schemas(cls, service_instance_ids: Optional[Iterable[str]] = None) -> list[ServiceInstance]:
-        if service_instance_ids:
-            return cls.retrieve_schemas_where(cls.id.in_(service_instance_ids))
-        return cls.retrieve_schemas_where()
-
-    @classmethod
-    def retrieve_schemas_where(cls, *where_params) -> list[ServiceInstance]:
-        query = cls.select()
-        if where_params:
-            query = query.where(*where_params)
-        models = list(query.execute())
-        return lmap(cls._to_schema, models)

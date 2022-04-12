@@ -3,9 +3,9 @@ from fastapi.testclient import TestClient
 from peewee import Database, SqliteDatabase
 
 from app.main import app
-from app.models import NodeModel, ServiceInstanceModel, ServiceModel
+from app.models import NodeModel, SchedulerLogModel, ServiceInstanceModel, ServiceModel
 
-MODELS = [NodeModel, ServiceModel, ServiceInstanceModel]
+MODELS = [NodeModel, ServiceModel, ServiceInstanceModel, SchedulerLogModel]
 
 
 @pytest.fixture

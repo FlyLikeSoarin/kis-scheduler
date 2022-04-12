@@ -1,15 +1,15 @@
-from typing import Iterable, Optional
 from uuid import uuid4
 
-from funcy import first, lmap
 from peewee import BooleanField, CharField, FloatField, IntegerField
 
 from app.database import BaseModel
 from app.schemas.helpers import ResourceData
 from app.schemas.nodes import Node, NodeStatus
 
+from .mixins import SchemaRetrieversMixin
 
-class NodeModel(BaseModel):
+
+class NodeModel(SchemaRetrieversMixin, BaseModel):
     status = CharField(max_length=20, choices=NodeStatus.choices())
 
     cpu_cores = FloatField(null=True)
@@ -46,24 +46,3 @@ class NodeModel(BaseModel):
         )
         schema._was_updated = model.was_updated
         return schema
-
-    @classmethod
-    def retrieve_schema(cls, node_id: str) -> Node:
-        node = first(cls.retrieve_schemas([node_id]))
-        if node is None:
-            raise ValueError("Not found")
-        return node
-
-    @classmethod
-    def retrieve_schemas(cls, node_ids: Optional[Iterable[str]] = None) -> list[Node]:
-        if node_ids:
-            return cls.retrieve_schemas_where(cls.id.in_(node_ids))
-        return cls.retrieve_schemas_where()
-
-    @classmethod
-    def retrieve_schemas_where(cls, *where_params) -> list[Node]:
-        query = cls.select()
-        if where_params:
-            query = query.where(*where_params)
-        models = list(query.execute())
-        return lmap(cls._to_schema, models)

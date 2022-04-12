@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from .monitoring import SchedulerLog
 from .nodes import Node
 from .services import Service, ServiceInstance
 
@@ -32,3 +33,7 @@ class ClusterStateResponse(BaseResponse):
     services: list[Service] = ...
     service_instances: list[ServiceInstance] = ...
     nodes: list[Node] = ...
+
+
+class MetricsResponse(BaseResponse):
+    data: list[SchedulerLog] = ...

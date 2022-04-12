@@ -4,11 +4,10 @@ from funcy import lfilter, lpluck_attr, pluck_attr
 from pydantic import UUID4
 
 from app.models import ServiceInstanceModel
-from app.schemas.helpers import (ResourceData, base_allocated_resources,
-                                 increase_resource_step_kwargs, resource_types)
+from app.schemas.helpers import ResourceData, base_allocated_resources, increase_resource_step_kwargs, resource_types
+from app.schemas.monitoring import TrackedObjects
 from app.schemas.nodes import Node, NodeStatus
-from app.schemas.services import (Service, ServiceInstance,
-                                  ServiceInstanceStatus, ServiceStatus)
+from app.schemas.services import Service, ServiceInstance, ServiceInstanceStatus, ServiceStatus
 from app.utils.exceptions import EvictionError, SchedulingError
 
 from .cluster import ClusterState
@@ -143,6 +142,8 @@ class ServiceInstanceUpdatesResolver:
             state, updated_service_instances_ids
         )
 
+        state.metrics.increase_counter(TrackedObjects.EVICTED, len(updated_service_instances_ids))
+
         return state
 
     @staticmethod
@@ -234,10 +235,10 @@ class ServiceInstanceUpdatesResolver:
             is_placed = ServiceInstanceUpdatesResolver.place_instance_somewhere(
                 state, instance, required_resources, service
             )
-            if not is_placed:
+            if is_placed:
+                updated_service_instances_ids.remove(instance_id)
+            else:
                 pass  # Resolve not enough resources to place
-
-            updated_service_instances_ids.remove(instance_id)
 
         return state, updated_service_instances_ids
 

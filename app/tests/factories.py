@@ -3,8 +3,7 @@ from pydantic import ByteSize
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.schemas.nodes import NodeStatus
-from app.schemas.services import (ServiceInstanceStatus, ServiceStatus,
-                                  ServiceType)
+from app.schemas.services import ServiceInstanceStatus, ServiceStatus, ServiceType
 
 
 class BaseModelFactory(factory.Factory):

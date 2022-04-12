@@ -5,10 +5,10 @@ from funcy import lfilter, lpluck_attr, project
 from pydantic import UUID4
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
-from app.schemas.helpers import ResourceData, resource_types
+from app.schemas.helpers import ResourceData
+from app.schemas.monitoring import SchedulerMetrics, TrackedAction, TrackedObjects
 from app.schemas.nodes import Node, NodeStatus
-from app.schemas.services import (Service, ServiceInstance,
-                                  ServiceInstanceStatus)
+from app.schemas.services import Service, ServiceInstance, ServiceInstanceStatus
 from app.utils.exceptions import EvictionError, SchedulingError
 
 
@@ -21,6 +21,8 @@ class ClusterState:
         self.ids_to_nodes_mapping: dict[UUID4, Node] = {}
         self.ids_to_services_mapping: dict[UUID4, Service] = {}
         self.ids_to_service_instances_mapping: dict[UUID4, ServiceInstance] = {}
+
+        self.metrics = SchedulerMetrics()
 
         self._load_state()
 
@@ -89,6 +91,21 @@ class ClusterState:
     def get_service_instances_by_ids(self, ids: Iterable[UUID4]) -> Iterable[ServiceInstance]:
         return project(self.ids_to_service_instances_mapping, ids).values()
 
+    def finalize_metrics(self) -> SchedulerMetrics:
+        self.metrics.increase_counter(TrackedObjects.NODE, len(self.nodes))
+        self.metrics.increase_counter(TrackedObjects.SERVICE, len(self.service_instances))
+
+        total, available = ResourceData(), ResourceData()
+        for node in self.nodes:
+            total += node.node_resources
+            available += node.available_resources
+
+        self.metrics.total_cluster_resources = total
+        self.metrics.utilized_cluster_resources = total - available
+        self.metrics.calculate_utilization()
+
+        return self.metrics
+
     def calculate_available_resources(self):
         """For each node available resources is calculated (or set to None if error occurred)"""
 
@@ -139,7 +156,8 @@ class ClusterState:
 
     def evict_instance(self, instance: ServiceInstance, node: Optional[Node] = None):
         """Evicts instance from node. Adjusts available resources."""
-        print("evict", instance)
+        self.metrics.increase_counter(TrackedAction.EVICTION, 1)
+
         if not node:
             node = self.ids_to_nodes_mapping[instance.id]
         if node.available_resources is not None:
@@ -151,12 +169,13 @@ class ClusterState:
         instance.status = ServiceInstanceStatus.EVICTED
         instance._was_updated = True
 
-    @staticmethod
-    def place_instance(instance: ServiceInstance, node: Node, required_resources: ResourceData):
+    def place_instance(self, instance: ServiceInstance, node: Node, required_resources: ResourceData):
         """
         Places instance onto node. Adjusts available resources.
         If there is not enough resources to place instance raises SchedulingError.
         """
+        self.metrics.increase_counter(TrackedAction.ALLOCATION, 1)
+
         if not node.available_resources.fits(required_resources):
             raise SchedulingError()
         try:  # If there is not enough resources to place instance raises SchedulingError
@@ -183,5 +202,5 @@ class ClusterState:
         self.evict_instance(instance, node)
         self.place_instance(instance, node, new_allocated_resources)
 
-    def active_nodes(self):
+    def active_nodes(self) -> Iterable[Node]:
         return (node for node in self.nodes if node.status == NodeStatus.ACTIVE)
