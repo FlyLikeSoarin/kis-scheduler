@@ -174,12 +174,11 @@ class ClusterState:
         Places instance onto node. Adjusts available resources.
         If there is not enough resources to place instance raises SchedulingError.
         """
-        self.metrics.increase_counter(TrackedAction.ALLOCATION, 1)
-
         if not node.available_resources.fits(required_resources):
             raise SchedulingError()
         try:  # If there is not enough resources to place instance raises SchedulingError
             node.available_resources -= required_resources
+            self.metrics.increase_counter(TrackedAction.ALLOCATION, 1)
         except (ValueError, AttributeError) as exc:
             raise SchedulingError(exc)
         node.instance_ids.append(instance.id)

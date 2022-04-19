@@ -3,7 +3,7 @@ from pydantic import UUID4
 
 from app.models import NodeModel
 from app.schemas.nodes import Node, NodeStatus
-from app.schemas.requests import CreateNodeRequest, UpdateNodeRequest
+from app.schemas.requests import CreateNodeRequest
 from app.schemas.responses import NodeListResponse, NodeResponse
 
 router = APIRouter(prefix="/api/nodes")
@@ -28,18 +28,18 @@ def retrieve_node(node_id: UUID4):
     return NodeResponse(status="OK", data=node)
 
 
-@router.patch("/{node_id}/", response_model=NodeResponse)
-def update_node(node_id: UUID4, request: UpdateNodeRequest):
-    try:
-        node = NodeModel.retrieve_schema(str(node_id))
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-
-    node.status = NodeStatus.ACTIVE
-    node.node_resources = request.node_resources
-
-    NodeModel.synchronize_schema(node)
-    return NodeResponse(status="OK", data=node)
+# @router.patch("/{node_id}/", response_model=NodeResponse)
+# def update_node(node_id: UUID4, request: UpdateNodeRequest):
+#     try:
+#         node = NodeModel.retrieve_schema(str(node_id))
+#     except ValueError as exc:
+#         raise HTTPException(status_code=404, detail=str(exc))
+#
+#     node.status = NodeStatus.ACTIVE
+#     node.node_resources = request.node_resources
+#
+#     NodeModel.synchronize_schema(node)
+#     return NodeResponse(status="OK", data=node)
 
 
 @router.delete("/{node_id}/", response_model=NodeResponse)

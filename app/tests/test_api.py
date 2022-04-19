@@ -3,7 +3,6 @@ from datetime import timedelta
 from functools import partial
 from uuid import uuid4
 
-import pytest
 from funcy import lmap, omit
 
 from app.models import NodeModel, SchedulerLogModel, ServiceModel
@@ -35,23 +34,23 @@ class TestNodeCRUDAndListAPI:
         )
         assert response.status_code == 422
 
-    def test_update_node(self, test_client):
-        node = NodeFactory.create()
-        response = test_client.patch(
-            f"/api/nodes/{node.id}/",
-            json={"node_resources": {"cpu_cores": 2, "ram": "8GiB", "disk": "1TiB"}},
-        )
-        assert response.json()["data"] == _serialize_node_model(
-            node, node_resources={"cpu_cores": 2, "ram": 8 * (1024**3), "disk": 1024**4}
-        )
-
-    def test_update_node_422_if_not_valid(self, test_client):
-        node = NodeFactory.create()
-        response = test_client.patch(
-            f"/api/nodes/{node.id}/",
-            json={"node_resources": "KIS"},
-        )
-        assert response.status_code == 422
+    # def test_update_node(self, test_client):
+    #     node = NodeFactory.create()
+    #     response = test_client.patch(
+    #         f"/api/nodes/{node.id}/",
+    #         json={"node_resources": {"cpu_cores": 2, "ram": "8GiB", "disk": "1TiB"}},
+    #     )
+    #     assert response.json()["data"] == _serialize_node_model(
+    #         node, node_resources={"cpu_cores": 2, "ram": 8 * (1024**3), "disk": 1024**4}
+    #     )
+    #
+    # def test_update_node_422_if_not_valid(self, test_client):
+    #     node = NodeFactory.create()
+    #     response = test_client.patch(
+    #         f"/api/nodes/{node.id}/",
+    #         json={"node_resources": "KIS"},
+    #     )
+    #     assert response.status_code == 422
 
     def test_delete_node_404_if_not_found(self, test_client):
         response = test_client.delete(f"/api/nodes/{uuid4()}/")

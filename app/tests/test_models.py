@@ -1,6 +1,4 @@
-from funcy import first
-
-from app.models import NodeModel, ServiceInstanceModel, ServiceModel
+from app.models import ServiceInstanceModel
 
 from .factories import NodeFactory, ServiceFactory, ServiceInstanceFactory
 

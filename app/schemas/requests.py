@@ -16,8 +16,8 @@ class CreateNodeRequest(BaseModel):
         return value
 
 
-class UpdateNodeRequest(BaseModel):
-    node_resources: Optional[ResourceData]
+# class UpdateNodeRequest(BaseModel):
+#     node_resources: Optional[ResourceData]
 
 
 class CreateServiceRequest(BaseModel):

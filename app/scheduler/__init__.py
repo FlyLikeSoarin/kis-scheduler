@@ -19,12 +19,18 @@ def catch_time() -> float:
 class Scheduler:
     @classmethod
     def run_scheduling(cls):
-        with db.atomic(), catch_time() as get_seconds:
+        with db.atomic():
             state = ClusterState()
-            state = NodeUpdatesResolver.run(state)
-            state = ServiceUpdatesResolver.run(state)
-            state = ServiceInstanceUpdatesResolver.run(state)
+
+            # Catch time without DB queries
+            with catch_time() as get_seconds:
+                state = NodeUpdatesResolver.run(state)
+                state = ServiceUpdatesResolver.run(state)
+                state = ServiceInstanceUpdatesResolver.run(state)
+            seconds = get_seconds()
+
             state.commit()
 
-        state.metrics.duration = timedelta(seconds=get_seconds())
+        state.finalize_metrics()
+        state.metrics.duration = timedelta(seconds=seconds)
         SchedulerLogModel.persist_schema(SchedulerLog(metrics=state.metrics))

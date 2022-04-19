@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Optional, Union
 
-from pydantic import UUID4, BaseModel, root_validator
+from pydantic import UUID4, BaseModel, Field, root_validator
 
 from app.utils.typing import ChoicesEnum
 
@@ -24,10 +24,10 @@ class SchedulerMetrics(BaseModel):
 
     total_cluster_resources: Optional[ResourceData] = None
     utilized_cluster_resources: Optional[ResourceData] = None
-    utilization: dict = {}
+    utilization: dict = Field(default_factory=dict)
 
-    actions_counter: dict[TrackedAction, int] = {}
-    objects_counter: dict[TrackedObjects, int] = {}
+    actions_counter: dict[TrackedAction, int] = Field(default_factory=dict)
+    objects_counter: dict[TrackedObjects, int] = Field(default_factory=dict)
 
     @root_validator()
     def utilized_fits_in_total(cls, values: dict[str:Any]) -> dict[str:Any]:
@@ -49,7 +49,7 @@ class SchedulerMetrics(BaseModel):
             to = self.actions_counter
         else:
             to = self.objects_counter
-        to[on] = (to[on] + by) if (on in to) else 0
+        to[on] = (to[on] + by) if (on in to) else by
 
 
 class SchedulerLog(BaseModel):

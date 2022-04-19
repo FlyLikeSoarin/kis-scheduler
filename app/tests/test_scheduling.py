@@ -1,4 +1,3 @@
-import pytest
 from funcy import first
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
