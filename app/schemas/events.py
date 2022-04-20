@@ -4,7 +4,7 @@ from pydantic import UUID4, BaseModel, validator
 
 from .helpers import ResourceData
 from .nodes import NodeStatus
-from .services import ServiceInstanceStatus
+from .services import ExecutionStatus, ResourceStatus
 
 
 class NodeEvent(BaseModel):
@@ -20,16 +20,5 @@ class NodeEvent(BaseModel):
 
 class ServiceInstanceEvent(BaseModel):
     instance_id: UUID4 = ...
-    updated_status: Optional[ServiceInstanceStatus] = None
-
-    @validator("updated_status")
-    def validate_updated_status(cls, value):
-        if value in (
-            ServiceInstanceStatus.CRASH_LOOP,
-            ServiceInstanceStatus.RUNNING,
-            ServiceInstanceStatus.EXCEEDED_CPU,
-            ServiceInstanceStatus.EXCEEDED_RAM,
-            ServiceInstanceStatus.EXCEEDED_DISK,
-        ):
-            return value
-        raise ValueError("Forbidden updated_status. Allowed values: CRASH_LOOP, RUNNING, EXCEEDED_*")
+    execution_status: Optional[ExecutionStatus] = None
+    resource_status: Optional[ResourceStatus] = None

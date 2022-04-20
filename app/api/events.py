@@ -33,11 +33,13 @@ def on_service_instance_event(event: ServiceInstanceEvent):
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    if service_instance.status == ServiceInstanceStatus.DELETED:
-        raise HTTPException(status_code=403, detail="Event for deleted service_instances are not allowed")
+    if service_instance.status != ServiceInstanceStatus.PLACED:
+        raise HTTPException(status_code=403, detail="Event for not PLACED service instances are forbidden")
 
-    if event.updated_status is not None:
-        service_instance.status = event.updated_status
+    if event.execution_status is not None:
+        service_instance.execution_status = event.execution_status
+    if event.resource_status is not None:
+        service_instance.resource_status = event.resource_status
 
     ServiceInstanceModel.synchronize_schema(service_instance)
     return EventResponse(status="OK")

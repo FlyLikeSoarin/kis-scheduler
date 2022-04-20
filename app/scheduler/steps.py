@@ -132,12 +132,12 @@ class ServiceInstanceUpdatesResolver:
 
         state.calculate_available_resources()
 
-        state, updated_service_instances_ids = ServiceInstanceUpdatesResolver.resolve_allocated_service_instances(
-            state, updated_service_instances_ids
-        )
-        state, updated_service_instances_ids = ServiceInstanceUpdatesResolver.resolve_exceeded_service_instances(
-            state, updated_service_instances_ids
-        )
+        # state, updated_service_instances_ids = ServiceInstanceUpdatesResolver.resolve_allocated_service_instances(
+        #     state, updated_service_instances_ids
+        # )
+        # state, updated_service_instances_ids = ServiceInstanceUpdatesResolver.resolve_exceeded_service_instances(
+        #     state, updated_service_instances_ids
+        # )
         state, updated_service_instances_ids = ServiceInstanceUpdatesResolver.resolve_evicted_service_instances(
             state, updated_service_instances_ids
         )
@@ -146,77 +146,77 @@ class ServiceInstanceUpdatesResolver:
 
         return state
 
-    @staticmethod
-    def resolve_allocated_service_instances(
-        state: ClusterState, updated_service_instances_ids: set[UUID4]
-    ) -> tuple[ClusterState, set[UUID4]]:
-        for instance_id in list(updated_service_instances_ids):
-            instance: ServiceInstance = state.ids_to_service_instances_mapping[instance_id]
-
-            if instance.status not in (
-                ServiceInstanceStatus.CREATED,
-                ServiceInstanceStatus.RUNNING,
-                ServiceInstanceStatus.CRASH_LOOP,
-            ):
-                continue
-
-            service: Service = state.ids_to_services_mapping[instance.service_id]
-            state.shrink_instance(instance, service.resource_limit)
-            updated_service_instances_ids.remove(instance_id)
-
-        return state, updated_service_instances_ids
-
-    @staticmethod
-    def resolve_exceeded_service_instances(
-        state: ClusterState, updated_service_instances_ids: set[UUID4]
-    ) -> tuple[ClusterState, set[UUID4]]:
-        for instance_id in list(updated_service_instances_ids):
-            instance: ServiceInstance = state.ids_to_service_instances_mapping[instance_id]
-
-            if instance.status not in (
-                ServiceInstanceStatus.EXCEEDED_CPU,
-                ServiceInstanceStatus.EXCEEDED_RAM,
-                ServiceInstanceStatus.EXCEEDED_DISK,
-            ):
-                continue
-
-            exceeded_resource_type = instance.status.value.split("_")[-1]
-            exceeded_resource_type = "cpu_cores" if exceeded_resource_type == "cpu" else exceeded_resource_type
-            if exceeded_resource_type not in resource_types:
-                raise SchedulingError("Unknown resource type exceeded")
-
-            service: Service = state.ids_to_services_mapping[instance.service_id]
-            new_allocated_resources = ServiceInstanceUpdatesResolver._calculate_additional_resources(
-                service, instance, exceeded_resource_type
-            )
-            current_node = state.ids_to_nodes_mapping[instance.node_id]
-            current_status = instance.status
-
-            def _attempt_to_place(new_node):
-                """Attempt to evict other instances from node to place instance with additional resources"""
-                instance_ids_to_evict = state.attempt_to_acquire_resources(
-                    new_node, new_allocated_resources - instance.allocated_resources, service
-                )
-                for instance_to_evict in state.get_service_instances_by_ids(instance_ids_to_evict):
-                    state.evict_instance(instance_to_evict, new_node)
-                state.evict_instance(instance, current_node)
-                state.place_instance(instance, new_node, new_allocated_resources)
-
-            try:
-                _attempt_to_place(current_node)
-                instance.status = current_status
-            except EvictionError:
-                pass
-
-            for node in (obj for obj in state.active_nodes() if obj.id != current_node.id):
-                try:
-                    _attempt_to_place(node)
-                except EvictionError:
-                    continue
-
-            updated_service_instances_ids.remove(instance_id)
-
-        return state, updated_service_instances_ids
+    # @staticmethod
+    # def resolve_allocated_service_instances(
+    #     state: ClusterState, updated_service_instances_ids: set[UUID4]
+    # ) -> tuple[ClusterState, set[UUID4]]:
+    #     for instance_id in list(updated_service_instances_ids):
+    #         instance: ServiceInstance = state.ids_to_service_instances_mapping[instance_id]
+    #
+    #         if instance.status not in (
+    #             ServiceInstanceStatus.CREATED,
+    #             ServiceInstanceStatus.RUNNING,
+    #             ServiceInstanceStatus.CRASH_LOOP,
+    #         ):
+    #             continue
+    #
+    #         service: Service = state.ids_to_services_mapping[instance.service_id]
+    #         state.shrink_instance(instance, service.resource_limit)
+    #         updated_service_instances_ids.remove(instance_id)
+    #
+    #     return state, updated_service_instances_ids
+    #
+    # @staticmethod
+    # def resolve_exceeded_service_instances(
+    #     state: ClusterState, updated_service_instances_ids: set[UUID4]
+    # ) -> tuple[ClusterState, set[UUID4]]:
+    #     for instance_id in list(updated_service_instances_ids):
+    #         instance: ServiceInstance = state.ids_to_service_instances_mapping[instance_id]
+    #
+    #         if instance.status not in (
+    #             ServiceInstanceStatus.EXCEEDED_CPU,
+    #             ServiceInstanceStatus.EXCEEDED_RAM,
+    #             ServiceInstanceStatus.EXCEEDED_DISK,
+    #         ):
+    #             continue
+    #
+    #         exceeded_resource_type = instance.status.value.split("_")[-1]
+    #         exceeded_resource_type = "cpu_cores" if exceeded_resource_type == "cpu" else exceeded_resource_type
+    #         if exceeded_resource_type not in resource_types:
+    #             raise SchedulingError("Unknown resource type exceeded")
+    #
+    #         service: Service = state.ids_to_services_mapping[instance.service_id]
+    #         new_allocated_resources = ServiceInstanceUpdatesResolver._calculate_additional_resources(
+    #             service, instance, exceeded_resource_type
+    #         )
+    #         current_node = state.ids_to_nodes_mapping[instance.node_id]
+    #         current_status = instance.status
+    #
+    #         def _attempt_to_place(new_node):
+    #             """Attempt to evict other instances from node to place instance with additional resources"""
+    #             instance_ids_to_evict = state.attempt_to_acquire_resources(
+    #                 new_node, new_allocated_resources - instance.allocated_resources, service
+    #             )
+    #             for instance_to_evict in state.get_service_instances_by_ids(instance_ids_to_evict):
+    #                 state.evict_instance(instance_to_evict, new_node)
+    #             state.evict_instance(instance, current_node)
+    #             state.place_instance(instance, new_node, new_allocated_resources)
+    #
+    #         try:
+    #             _attempt_to_place(current_node)
+    #             instance.status = current_status
+    #         except EvictionError:
+    #             pass
+    #
+    #         for node in (obj for obj in state.active_nodes() if obj.id != current_node.id):
+    #             try:
+    #                 _attempt_to_place(node)
+    #             except EvictionError:
+    #                 continue
+    #
+    #         updated_service_instances_ids.remove(instance_id)
+    #
+    #     return state, updated_service_instances_ids
 
     @staticmethod
     def resolve_evicted_service_instances(

@@ -185,7 +185,7 @@ class ClusterState:
 
         instance.allocated_resources = required_resources
         instance.node_id = node.id
-        instance.status = ServiceInstanceStatus.CREATED
+        instance.status = ServiceInstanceStatus.PLACED
         instance._was_updated = False
 
     def shrink_instance(self, instance: ServiceInstance, resource_limit: ResourceData, node: Optional[Node] = None):

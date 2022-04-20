@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 from app.models import SchedulerLogModel
 from app.scheduler import Scheduler
-from app.schemas.helpers import ResourceDatag
+from app.schemas.helpers import ResourceData
 from app.schemas.monitoring import TrackedAction, TrackedObjects
 from app.schemas.requests import CreateNodeRequest, CreateServiceRequest, UpdateServiceRequest
 from app.schemas.responses import NodeResponse, ServiceResponse

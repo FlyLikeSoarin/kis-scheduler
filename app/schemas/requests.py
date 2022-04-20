@@ -16,14 +16,16 @@ class CreateNodeRequest(BaseModel):
         return value
 
 
-# class UpdateNodeRequest(BaseModel):
-#     node_resources: Optional[ResourceData]
-
-
 class CreateServiceRequest(BaseModel):
-    resource_limit: ResourceData = ...
+    executable: UUID4 = ...
     type: ServiceType = ...
+    priority: int = 99
+    resource_limit: ResourceData = ...
+    resource_floor: ResourceData = ...
 
 
 class UpdateServiceRequest(BaseModel):
-    resource_limit: Optional[ResourceData]
+    executable: Optional[UUID4] = None
+    priority: Optional[int] = None
+    resource_limit: Optional[ResourceData] = None
+    resource_floor: Optional[ResourceData] = None

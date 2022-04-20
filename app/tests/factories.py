@@ -3,7 +3,14 @@ from pydantic import ByteSize
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.schemas.nodes import NodeStatus
-from app.schemas.services import ServiceInstanceStatus, ServiceStatus, ServiceType
+from app.schemas.services import (
+    ExecutionStatus,
+    DEFAULT_PRIORITY,
+    ResourceStatus,
+    ServiceInstanceStatus,
+    ServiceStatus,
+    ServiceType,
+)
 
 
 class BaseModelFactory(factory.Factory):
@@ -26,12 +33,18 @@ class NodeFactory(BaseModelFactory):
 
 class ServiceFactory(BaseModelFactory):
     id = factory.Faker("uuid4")
+    executable = factory.Faker("uuid4")
     status = ServiceStatus.ACTIVE.value
     type = ServiceType.STATELESS.value
+    priority = DEFAULT_PRIORITY
 
-    cpu_cores = 1.0
-    ram = ByteSize.validate("1GiB")
-    disk = ByteSize.validate("10GiB")
+    cpu_cores_limit = 1.0
+    ram_limit = ByteSize.validate("1GiB")
+    disk_limit = ByteSize.validate("10GiB")
+
+    cpu_cores_floor = 1.0
+    ram_floor = ByteSize.validate("1GiB")
+    disk_floor = ByteSize.validate("10GiB")
 
     class Meta:
         model = ServiceModel
@@ -39,13 +52,17 @@ class ServiceFactory(BaseModelFactory):
 
 class ServiceInstanceFactory(BaseModelFactory):
     id = factory.Faker("uuid4")
-    status = ServiceInstanceStatus.CREATED.value
-    service = None
-    host_node = None
+    executable = factory.Faker("uuid4")
+    status = ServiceInstanceStatus.PLACED.value
+    execution_status = ExecutionStatus.UNKNOWN.value
+    resource_status = ResourceStatus.OK.value
 
     cpu_cores = 1.0
     ram = ByteSize.validate("1GiB")
     disk = ByteSize.validate("10GiB")
+
+    service = None
+    host_node = None
 
     class Meta:
         model = ServiceInstanceModel
