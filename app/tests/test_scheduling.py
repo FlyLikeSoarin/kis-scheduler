@@ -4,7 +4,7 @@ from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.scheduler import Scheduler
 from app.schemas.helpers import ResourceData, base_allocated_resources, increase_resource_step_kwargs
 from app.schemas.nodes import NodeStatus
-from app.schemas.services import ServiceInstanceStatus, ServiceType
+from app.schemas.services import ResourceStatus, ServiceInstanceStatus, ServiceType
 
 from .factories import NodeFactory, ServiceFactory, ServiceInstanceFactory
 
@@ -54,22 +54,20 @@ class TestServiceCreation:
         node = NodeFactory.create(  # Enough resources for single instance
             was_updated=False, **(base_allocated_resources.dict())
         )
-        # Stateless
-        stateless = ServiceFactory.create(was_updated=False, type=ServiceType.STATELESS)
-        ServiceInstanceFactory.create(was_updated=False, service=stateless, host_node=node)
-        # Fragile
-        fragile = ServiceFactory.create(was_updated=True, type=ServiceType.FRAGILE)
+        ordinary = ServiceFactory.create(was_updated=False, priority=0)
+        ServiceInstanceFactory.create(was_updated=False, service=ordinary, host_node=node)
+        important = ServiceFactory.create(was_updated=True, priority=99)
 
         Scheduler.run_scheduling()
 
-        stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service_id == stateless.id
+        ordinary_instances = ServiceInstanceModel.retrieve_schemas_where(
+            ServiceInstanceModel.service_id == ordinary.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
-        assert stateless_instances and fragile_instances
+        important_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == important.id)
+        assert ordinary_instances and important_instances
 
-        assert first(stateless_instances).node_id is None  # Preempted low-priority instance
-        assert str(first(fragile_instances).node_id) == str(node.id)  # Placed high-priority instance
+        assert first(ordinary_instances).node_id is None  # Preempted low-priority instance
+        assert str(first(important_instances).node_id) == str(node.id)  # Placed high-priority instance
 
     def test_node_with_lower_priority_not_preempts_node_with_higher_priority_on_scarce_resources(self, test_client):
         """
@@ -80,22 +78,25 @@ class TestServiceCreation:
         node = NodeFactory.create(  # Enough resources for single instance
             was_updated=False, **(base_allocated_resources.dict())
         )
-        # Stateless
-        stateless = ServiceFactory.create(was_updated=True, type=ServiceType.STATELESS)
-        # Fragile
-        fragile = ServiceFactory.create(was_updated=False, type=ServiceType.FRAGILE)
-        ServiceInstanceFactory.create(was_updated=False, service=fragile, host_node=node)
+        ordinary = ServiceFactory.create(was_updated=True, priority=0)
+        important = ServiceFactory.create(was_updated=False, priority=99)
+        ServiceInstanceFactory.create(
+            was_updated=False,
+            executable=important.executable,
+            service=important,
+            host_node=node,
+        )
 
         Scheduler.run_scheduling()
 
-        stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service_id == stateless.id
+        ordinary_instances = ServiceInstanceModel.retrieve_schemas_where(
+            ServiceInstanceModel.service_id == ordinary.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
-        assert stateless_instances and fragile_instances
+        important_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == important.id)
+        assert ordinary_instances and important_instances
 
-        assert first(stateless_instances).node_id is None  # Not placed low-priority instance
-        assert str(first(fragile_instances).node_id) == str(node.id)  # Unchanged high-priority instance
+        assert first(ordinary_instances).node_id is None  # Not placed low-priority instance
+        assert str(first(important_instances).node_id) == str(node.id)  # Unchanged high-priority instance
 
     def test_node_with_highest_priority_will_be_places(self, test_client):
         """
@@ -106,15 +107,15 @@ class TestServiceCreation:
         node = NodeFactory.create(  # Enough resources for single instance
             was_updated=False, **(base_allocated_resources.dict())
         )
-        ServiceFactory.create(was_updated=True, type=ServiceType.STATELESS)
-        ServiceFactory.create(was_updated=True, type=ServiceType.FRAGILE)
-        stateful = ServiceFactory.create(was_updated=True, type=ServiceType.STATEFUL)
+        ServiceFactory.create(was_updated=True, priority=0)
+        ServiceFactory.create(was_updated=True, priority=50)
+        important = ServiceFactory.create(was_updated=True, priority=99)
 
         Scheduler.run_scheduling()
 
-        stateful_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == stateful.id)
-        assert stateful_instances
-        assert str(first(stateful_instances).node_id) == str(node.id)  # Placed highest-priority instance
+        important_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == important.id)
+        assert important_instances
+        assert str(first(important_instances).node_id) == str(node.id)  # Placed highest-priority instance
 
     def test_node_placed_without_eviction_if_resources_available_on_same_node(self, test_client):
         """
@@ -124,21 +125,21 @@ class TestServiceCreation:
         """
         node = NodeFactory.create(was_updated=False)  # Enough resources for both by default
         # Stateless
-        stateless = ServiceFactory.create(was_updated=False, type=ServiceType.STATELESS)
-        ServiceInstanceFactory.create(was_updated=False, service=stateless, host_node=node)
+        ordinary = ServiceFactory.create(was_updated=False, priority=0)
+        ServiceInstanceFactory.create(was_updated=False, service=ordinary, host_node=node)
         # Fragile
-        fragile = ServiceFactory.create(was_updated=True, type=ServiceType.FRAGILE)
+        important = ServiceFactory.create(was_updated=True, priority=99)
 
         Scheduler.run_scheduling()
 
-        stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service_id == stateless.id
+        ordinary_instances = ServiceInstanceModel.retrieve_schemas_where(
+            ServiceInstanceModel.service_id == ordinary.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
-        assert stateless_instances and fragile_instances
+        importnant_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == important.id)
+        assert ordinary_instances and importnant_instances
 
-        assert str(first(stateless_instances).node_id) == str(node.id)  # Unchanged low-priority instance
-        assert str(first(fragile_instances).node_id) == str(node.id)  # Placed high-priority instance
+        assert str(first(ordinary_instances).node_id) == str(node.id)  # Unchanged low-priority instance
+        assert str(first(importnant_instances).node_id) == str(node.id)  # Placed high-priority instance
 
     def test_node_placed_without_eviction_if_resources_available_on_other_node(self, test_client):
         """
@@ -150,21 +151,21 @@ class TestServiceCreation:
             size=2, was_updated=False, **(base_allocated_resources.dict())
         )
         # Stateless
-        stateless = ServiceFactory.create(was_updated=False, type=ServiceType.STATELESS)
-        ServiceInstanceFactory.create(was_updated=False, service=stateless, host_node=nodes[0])
+        ordinary = ServiceFactory.create(was_updated=False, priority=0)
+        ServiceInstanceFactory.create(was_updated=False, service=ordinary, host_node=nodes[0])
         # Fragile
-        fragile = ServiceFactory.create(was_updated=True, type=ServiceType.FRAGILE)
+        important = ServiceFactory.create(was_updated=True, priority=99)
 
         Scheduler.run_scheduling()
 
-        stateless_instances = ServiceInstanceModel.retrieve_schemas_where(
-            ServiceInstanceModel.service_id == stateless.id
+        ordinary_instances = ServiceInstanceModel.retrieve_schemas_where(
+            ServiceInstanceModel.service_id == ordinary.id
         )
-        fragile_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == fragile.id)
-        assert stateless_instances and fragile_instances
+        important_instances = ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service == important.id)
+        assert ordinary_instances and important_instances
 
-        assert str(first(stateless_instances).node_id) == str(nodes[0].id)  # Unchanged low-priority instance
-        assert str(first(fragile_instances).node_id) == str(nodes[1].id)  # Placed high-priority instance
+        assert str(first(ordinary_instances).node_id) == str(nodes[0].id)  # Unchanged low-priority instance
+        assert str(first(important_instances).node_id) == str(nodes[1].id)  # Placed high-priority instance
 
     def test_if_node_exceeds_resource_more_will_be_allocated_if_allowed_by_limit_and_possible(self, test_client):
         """
@@ -178,10 +179,11 @@ class TestServiceCreation:
         )
 
         node = NodeFactory.create(was_updated=False)
-        service = ServiceFactory.create(was_updated=False, cpu_cores=100.0)
+        service = ServiceFactory.create(was_updated=False, cpu_cores_limit=100.0)
         ServiceInstanceFactory.create(
             was_updated=True,
-            status=ServiceInstanceStatus.EXCEEDED_CPU,
+            status=ServiceInstanceStatus.PLACED,
+            resource_status=ResourceStatus.CONSTRAINT_BY_CPU,
             service=service,
             host_node=node,
             **(base_allocated_resources.dict()),
@@ -205,7 +207,8 @@ class TestServiceCreation:
         service = ServiceFactory.create(was_updated=False, cpu_cores=expected_resources.cpu_cores)
         ServiceInstanceFactory.create(
             was_updated=True,
-            status=ServiceInstanceStatus.EXCEEDED_CPU,
+            status=ServiceInstanceStatus.PLACED,
+            resource_status=ResourceStatus.CONSTRAINT_BY_CPU,
             service=service,
             host_node=node,
             **(base_allocated_resources.dict()),
@@ -233,7 +236,8 @@ class TestServiceCreation:
         service = ServiceFactory.create(was_updated=False, cpu_cores=100.0)
         ServiceInstanceFactory.create(
             was_updated=True,
-            status=ServiceInstanceStatus.EXCEEDED_CPU,
+            status=ServiceInstanceStatus.PLACED,
+            resource_status=ResourceStatus.CONSTRAINT_BY_CPU,
             service=service,
             host_node=node,
             **(base_allocated_resources.dict()),
@@ -260,17 +264,18 @@ class TestServiceCreation:
         )
 
         node = NodeFactory.create(was_updated=False, cpu_cores=base_allocated_resources.cpu_cores * 2)
-        preempted = ServiceFactory.create(was_updated=False, type=ServiceType.STATELESS)
-        important = ServiceFactory.create(was_updated=False, type=ServiceType.FRAGILE, cpu_cores=100.0)
+        ordinary = ServiceFactory.create(was_updated=False, priority=0)
+        important = ServiceFactory.create(was_updated=False, priority=99, cpu_cores_limit=100.0)
         ServiceInstanceFactory.create(
             was_updated=False,
-            service=preempted,
+            service=ordinary,
             host_node=node,
             **(base_allocated_resources.dict()),
         )
         ServiceInstanceFactory.create(
             was_updated=True,
-            status=ServiceInstanceStatus.EXCEEDED_CPU,
+            status=ServiceInstanceStatus.PLACED,
+            resource_status=ResourceStatus.CONSTRAINT_BY_CPU,
             service=important,
             host_node=node,
             **(base_allocated_resources.dict()),
@@ -279,7 +284,7 @@ class TestServiceCreation:
         Scheduler.run_scheduling()
 
         preempted_instance = first(
-            ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == preempted.id)
+            ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == ordinary.id)
         )
         important_instance = first(
             ServiceInstanceModel.retrieve_schemas_where(ServiceInstanceModel.service_id == important.id)

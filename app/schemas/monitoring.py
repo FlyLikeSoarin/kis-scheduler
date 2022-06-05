@@ -10,6 +10,7 @@ from .helpers import ResourceData, resource_types
 
 class TrackedAction(str, ChoicesEnum):
     EVICTION = "eviction"
+    FRAGILE_EVICTION = "fragile_eviction"
     ALLOCATION = "allocation"
 
 

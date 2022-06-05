@@ -1,15 +1,18 @@
 from copy import deepcopy
+from functools import partial
 from typing import Iterable, Optional
 
-from funcy import lfilter, lpluck_attr, project
+from funcy import lfilter, lpluck_attr, pluck_attr, project
 from pydantic import UUID4
 
 from app.models import NodeModel, ServiceInstanceModel, ServiceModel
 from app.schemas.helpers import ResourceData
 from app.schemas.monitoring import SchedulerMetrics, TrackedAction, TrackedObjects
 from app.schemas.nodes import Node, NodeStatus
-from app.schemas.services import Service, ServiceInstance, ServiceInstanceStatus
+from app.schemas.services import ExecutionStatus, ResourceStatus, Service, ServiceInstance, ServiceInstanceStatus, ServiceType
 from app.utils.exceptions import EvictionError, SchedulingError
+
+from .selectors import SelectorType
 
 
 class ClusterState:
@@ -91,6 +94,12 @@ class ClusterState:
     def get_service_instances_by_ids(self, ids: Iterable[UUID4]) -> Iterable[ServiceInstance]:
         return project(self.ids_to_service_instances_mapping, ids).values()
 
+    def get_node_instances(self, node) -> Iterable[ServiceInstance]:
+        return self.get_service_instances_by_ids(node.instance_ids)
+
+    def get_node_services(self, node) -> Iterable[Service]:
+        return self.get_services_by_ids(pluck_attr('service_id', self.get_node_instances(node)))
+
     def finalize_metrics(self) -> SchedulerMetrics:
         self.metrics.increase_counter(TrackedObjects.NODE, len(self.nodes))
         self.metrics.increase_counter(TrackedObjects.SERVICE, len(self.service_instances))
@@ -122,8 +131,8 @@ class ClusterState:
                 raise SchedulingError("available_resource cannot be negative")
 
     def attempt_to_acquire_resources(
-        self, node: Node, required_resources: ResourceData, for_service: Service
-    ) -> list[UUID4]:
+        self, node: Node, required_resources: ResourceData, for_service: Service, selector: SelectorType
+    ) -> Optional[list[ServiceInstance]]:
         """
         Attempt to acquire requested resources from node.
         If service can acquire requested resources through eviction of some (maybe empty) set,
@@ -136,27 +145,27 @@ class ClusterState:
         if node.available_resources.fits(required_resources):
             return []
 
-        def _can_evict(instance_: ServiceInstance) -> bool:
-            return for_service.has_type_priority_over(self.ids_to_services_mapping[instance_.service_id])
-
-        evictable_instances: list[ServiceInstance] = lfilter(
-            _can_evict, self.get_service_instances_by_ids(node.instance_ids)
+        evictable_services: list[Service] = lfilter(
+            partial(selector, for_service), self.get_node_services(node)
         )
 
-        if not evictable_instances:
-            raise EvictionError()
-
+        evicted_instances: list[ServiceInstance] = []
         sum_ = deepcopy(node.available_resources)
-        for counter, instance in enumerate(evictable_instances):
+        for counter, service in enumerate(evictable_services):
+            instance = self.ids_to_service_instances_mapping[service.instance_id]
+            evicted_instances.append(instance)
             sum_ += instance.allocated_resources
-            if sum_.fits(required_resources):
-                return lpluck_attr("id", evictable_instances[: counter + 1])
 
-        raise EvictionError()
+            if sum_.fits(required_resources):
+                return evicted_instances
+
+        return None
 
     def evict_instance(self, instance: ServiceInstance, node: Optional[Node] = None):
         """Evicts instance from node. Adjusts available resources."""
         self.metrics.increase_counter(TrackedAction.EVICTION, 1)
+        if self.ids_to_services_mapping[instance.service_id].type == ServiceType.FRAGILE:
+            self.metrics.increase_counter(TrackedAction.FRAGILE_EVICTION, 1)
 
         if not node:
             node = self.ids_to_nodes_mapping[instance.id]
@@ -167,6 +176,8 @@ class ClusterState:
         instance.allocated_resources = None
         instance.node_id = None
         instance.status = ServiceInstanceStatus.EVICTED
+        instance.execution_status = None
+        instance.resource_status = None
         instance._was_updated = True
 
     def place_instance(self, instance: ServiceInstance, node: Node, required_resources: ResourceData):
@@ -186,6 +197,8 @@ class ClusterState:
         instance.allocated_resources = required_resources
         instance.node_id = node.id
         instance.status = ServiceInstanceStatus.PLACED
+        instance.execution_status = ExecutionStatus.UNKNOWN
+        instance.resource_status = ResourceStatus.OK
         instance._was_updated = False
 
     def shrink_instance(self, instance: ServiceInstance, resource_limit: ResourceData, node: Optional[Node] = None):

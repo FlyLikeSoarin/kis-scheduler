@@ -43,8 +43,8 @@ class ServiceInstance(BaseModel):
     id: UUID4 = None
     executable: UUID4 = None
     status: ServiceInstanceStatus = ServiceInstanceStatus.EVICTED
-    execution_status: Optional[ExecutionStatus] = ExecutionStatus.UNKNOWN
-    resource_status: Optional[ResourceStatus] = ResourceStatus.OK
+    execution_status: Optional[ExecutionStatus] = None
+    resource_status: Optional[ResourceStatus] = None
     allocated_resources: Optional[ResourceData] = None
     node_id: Optional[UUID4] = None
     service_id: Optional[UUID4] = None

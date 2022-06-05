@@ -66,10 +66,15 @@ class ResourceData(BaseModel):
             for resource_type in resource_types
         )
 
-    def get_compliant(self, resource_limit: "ResourceData") -> "ResourceData":
+    def get_compliant(
+            self, resource_limit: "ResourceData", resource_floor: Optional["ResourceData"] = None
+    ) -> "ResourceData":
         def _get_compliant_resource(resource_type):
             allocated_value, limit_value = lpluck_attr(resource_type, (self, resource_limit))
-            return min(allocated_value, limit_value)
+            result = min(allocated_value, limit_value) if limit_value else allocated_value
+            if resource_floor:
+                result = max(result, getattr(resource_floor, resource_type))
+            return result
 
         resource_data_kwargs = {
             resource_type: _get_compliant_resource(resource_type) for resource_type in resource_types
